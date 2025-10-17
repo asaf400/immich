@@ -397,4 +397,19 @@ export class AlbumRepository {
       .orderBy('assetCount', 'desc')
       .execute();
   }
+
+  /**
+   * Get albums that contain the given asset and have face recognition disabled.
+   */
+  @GenerateSql({ params: [DummyValue.UUID] })
+  getAlbumsWithFaceRecognitionDisabled(assetId: string) {
+    return this.db
+      .selectFrom('album')
+      .innerJoin('album_asset', 'album.id', 'album_asset.albumsId')
+      .where('album_asset.assetsId', '=', assetId)
+      .where('album.isFaceRecognitionEnabled', '=', false)
+      .where('album.deletedAt', 'is', sql.lit(null))
+      .select('album.id')
+      .execute();
+  }
 }

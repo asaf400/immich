@@ -315,6 +315,20 @@ export class PersonService extends BaseService {
       return JobStatus.Skipped;
     }
 
+    // Check if asset belongs to any albums with face recognition disabled
+    const albumsWithFaceRecognitionDisabled = await this.albumRepository.getAlbumsWithFaceRecognitionDisabled(id);
+    if (albumsWithFaceRecognitionDisabled) {
+      if (albumsWithFaceRecognitionDisabled.length > 0) {
+        this.logger.log(
+          `Asset ${id} belongs to ${albumsWithFaceRecognitionDisabled.length} albums with face recognition disabled`,
+        );
+        this.logger.log(
+          `Skipping face detection for asset ${id} - belongs to these albums with face recognition disabled: ${albumsWithFaceRecognitionDisabled.map((album) => album.id).join(', ')}`,
+        );
+        return JobStatus.Skipped;
+      }
+    }
+
     const { imageHeight, imageWidth, faces } = await this.machineLearningRepository.detectFaces(
       previewFile.path,
       machineLearning.facialRecognition,

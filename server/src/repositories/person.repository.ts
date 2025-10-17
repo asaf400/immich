@@ -112,6 +112,13 @@ export class PersonRepository {
     await this.db.deleteFrom('asset_face').where('asset_face.sourceType', '=', sourceType).execute();
   }
 
+  async deleteFacesByAssetIds(assetIds: string[]): Promise<void> {
+    if (assetIds.length === 0) {
+      return;
+    }
+    await this.db.deleteFrom('asset_face').where('asset_face.assetId', 'in', assetIds).execute();
+  }
+
   getAllFaces(options: GetAllFacesOptions = {}) {
     return this.db
       .selectFrom('asset_face')

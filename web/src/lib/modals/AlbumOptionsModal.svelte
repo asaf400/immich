@@ -77,6 +77,24 @@
     }
   };
 
+  const handleToggleFaceRecognition = async () => {
+    try {
+      album = await updateAlbumInfo({
+        id: album.id,
+        updateAlbumDto: {
+          isFaceRecognitionEnabled: !album.isFaceRecognitionEnabled,
+        },
+      });
+
+      notificationController.show({
+        type: NotificationType.Info,
+        message: $t('settings_saved'),
+      });
+    } catch (error) {
+      handleError(error, $t('errors.unable_to_save_album'));
+    }
+  };
+
   const handleRemoveUser = async (user: UserResponseDto): Promise<void> => {
     const confirmed = await modalManager.showDialog({
       title: $t('album_remove_user'),
@@ -133,6 +151,12 @@
             subtitle={$t('let_others_respond')}
             checked={album.isActivityEnabled}
             onToggle={handleToggleActivity}
+          />
+          <SettingSwitch
+            title={$t('admin.album_face_recognition')}
+            subtitle={$t('admin.album_face_recognition_description')}
+            checked={album.isFaceRecognitionEnabled}
+            onToggle={handleToggleFaceRecognition}
           />
         </div>
       </div>

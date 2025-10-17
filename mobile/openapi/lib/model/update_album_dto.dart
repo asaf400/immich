@@ -17,6 +17,7 @@ class UpdateAlbumDto {
     this.albumThumbnailAssetId,
     this.description,
     this.isActivityEnabled,
+    this.isFaceRecognitionEnabled,
     this.order,
   });
 
@@ -58,6 +59,14 @@ class UpdateAlbumDto {
   /// source code must fall back to having a nullable type.
   /// Consider adding a "default:" property in the specification file to hide this note.
   ///
+  bool? isFaceRecognitionEnabled;
+
+  ///
+  /// Please note: This property should have been non-nullable! Since the specification file
+  /// does not include a default value (using the "default:" property), however, the generated
+  /// source code must fall back to having a nullable type.
+  /// Consider adding a "default:" property in the specification file to hide this note.
+  ///
   AssetOrder? order;
 
   @override
@@ -66,6 +75,7 @@ class UpdateAlbumDto {
     other.albumThumbnailAssetId == albumThumbnailAssetId &&
     other.description == description &&
     other.isActivityEnabled == isActivityEnabled &&
+    other.isFaceRecognitionEnabled == isFaceRecognitionEnabled &&
     other.order == order;
 
   @override
@@ -75,10 +85,11 @@ class UpdateAlbumDto {
     (albumThumbnailAssetId == null ? 0 : albumThumbnailAssetId!.hashCode) +
     (description == null ? 0 : description!.hashCode) +
     (isActivityEnabled == null ? 0 : isActivityEnabled!.hashCode) +
+    (isFaceRecognitionEnabled == null ? 0 : isFaceRecognitionEnabled!.hashCode) +
     (order == null ? 0 : order!.hashCode);
 
   @override
-  String toString() => 'UpdateAlbumDto[albumName=$albumName, albumThumbnailAssetId=$albumThumbnailAssetId, description=$description, isActivityEnabled=$isActivityEnabled, order=$order]';
+  String toString() => 'UpdateAlbumDto[albumName=$albumName, albumThumbnailAssetId=$albumThumbnailAssetId, description=$description, isActivityEnabled=$isActivityEnabled, isFaceRecognitionEnabled=$isFaceRecognitionEnabled, order=$order]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -102,6 +113,11 @@ class UpdateAlbumDto {
     } else {
     //  json[r'isActivityEnabled'] = null;
     }
+    if (this.isFaceRecognitionEnabled != null) {
+      json[r'isFaceRecognitionEnabled'] = this.isFaceRecognitionEnabled;
+    } else {
+    //  json[r'isFaceRecognitionEnabled'] = null;
+    }
     if (this.order != null) {
       json[r'order'] = this.order;
     } else {
@@ -123,6 +139,7 @@ class UpdateAlbumDto {
         albumThumbnailAssetId: mapValueOfType<String>(json, r'albumThumbnailAssetId'),
         description: mapValueOfType<String>(json, r'description'),
         isActivityEnabled: mapValueOfType<bool>(json, r'isActivityEnabled'),
+        isFaceRecognitionEnabled: mapValueOfType<bool>(json, r'isFaceRecognitionEnabled'),
         order: AssetOrder.fromJson(json[r'order']),
       );
     }

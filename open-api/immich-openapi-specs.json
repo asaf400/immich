@@ -10233,6 +10233,9 @@
           "isActivityEnabled": {
             "type": "boolean"
           },
+          "isFaceRecognitionEnabled": {
+            "type": "boolean"
+          },
           "lastModifiedAssetTimestamp": {
             "format": "date-time",
             "type": "string"
@@ -10273,6 +10276,7 @@
           "hasSharedLink",
           "id",
           "isActivityEnabled",
+          "isFaceRecognitionEnabled",
           "owner",
           "ownerId",
           "shared",
@@ -17577,6 +17581,9 @@
             "type": "string"
           },
           "isActivityEnabled": {
+            "type": "boolean"
+          },
+          "isFaceRecognitionEnabled": {
             "type": "boolean"
           },
           "order": {

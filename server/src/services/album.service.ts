@@ -17,7 +17,7 @@ import {
 } from 'src/dtos/album.dto';
 import { BulkIdErrorReason, BulkIdResponseDto, BulkIdsDto } from 'src/dtos/asset-ids.response.dto';
 import { AuthDto } from 'src/dtos/auth.dto';
-import { Permission } from 'src/enum';
+import { JobName, Permission } from 'src/enum';
 import { AlbumAssetCount, AlbumInfoOptions } from 'src/repositories/album.repository';
 import { BaseService } from 'src/services/base.service';
 import { addAssets, removeAssets } from 'src/utils/asset.util';
@@ -152,6 +152,7 @@ export class AlbumService extends BaseService {
       description: dto.description,
       albumThumbnailAssetId: dto.albumThumbnailAssetId,
       isActivityEnabled: dto.isActivityEnabled,
+      isFaceRecognitionEnabled: dto.isFaceRecognitionEnabled,
       order: dto.order,
     });
 
@@ -180,6 +181,15 @@ export class AlbumService extends BaseService {
         updatedAt: new Date(),
         albumThumbnailAssetId: album.albumThumbnailAssetId ?? firstNewAssetId,
       });
+
+      // If face recognition is disabled for this album, clean up face data for newly added assets
+      if (!album.isFaceRecognitionEnabled) {
+        const successfulAssetIds = results.filter(({ success }) => success).map(({ id }) => id);
+        await this.personRepository.deleteFacesByAssetIds(successfulAssetIds);
+        this.logger.log(
+          `Cleaned up face data for ${successfulAssetIds.length} assets added to album ${id} with face recognition disabled`,
+        );
+      }
 
       const allUsersExceptUs = [...album.albumUsers.map(({ user }) => user.id), album.owner.id].filter(
         (userId) => userId !== auth.user.id,
@@ -235,6 +245,15 @@ export class AlbumService extends BaseService {
         updatedAt: new Date(),
         albumThumbnailAssetId: album.albumThumbnailAssetId ?? notPresentAssetIds[0],
       });
+
+      // If face recognition is disabled for this album, clean up face data for newly added assets
+      if (!album.isFaceRecognitionEnabled) {
+        await this.personRepository.deleteFacesByAssetIds(notPresentAssetIds);
+        this.logger.log(
+          `Cleaned up face data for ${notPresentAssetIds.length} assets added to album ${albumId} with face recognition disabled`,
+        );
+      }
+
       const allUsersExceptUs = [...album.albumUsers.map(({ user }) => user.id), album.owner.id].filter(
         (userId) => userId !== auth.user.id,
       );
@@ -264,6 +283,30 @@ export class AlbumService extends BaseService {
     const removedIds = results.filter(({ success }) => success).map(({ id }) => id);
     if (removedIds.length > 0 && album.albumThumbnailAssetId && removedIds.includes(album.albumThumbnailAssetId)) {
       await this.albumRepository.updateThumbnails();
+    }
+
+    // If face recognition is disabled for this album, check if any removed assets
+    // are no longer in any albums with face recognition disabled
+    if (!album.isFaceRecognitionEnabled && removedIds.length > 0) {
+      const assetsToRescan: string[] = [];
+
+      for (const assetId of removedIds) {
+        const albumsWithFaceRecognitionDisabled =
+          await this.albumRepository.getAlbumsWithFaceRecognitionDisabled(assetId);
+        if (!albumsWithFaceRecognitionDisabled || albumsWithFaceRecognitionDisabled.length === 0) {
+          assetsToRescan.push(assetId);
+        }
+      }
+
+      if (assetsToRescan.length > 0) {
+        const jobs = assetsToRescan.map(
+          (assetId) => ({ name: JobName.AssetDetectFaces, data: { id: assetId } }) as const,
+        );
+        await this.jobRepository.queueAll(jobs);
+        this.logger.log(
+          `Queued face detection for ${assetsToRescan.length} assets that were removed from the last album with face recognition disabled`,
+        );
+      }
     }
 
     return results;

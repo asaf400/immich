@@ -100,6 +100,7 @@ const albumResponse: AlbumResponseDto = {
   assets: [],
   assetCount: 1,
   isActivityEnabled: true,
+  isFaceRecognitionEnabled: true,
   order: AssetOrder.Desc,
 };
 
@@ -187,6 +188,7 @@ export const sharedLinkStub = {
       albumUsers: [],
       sharedLinks: [],
       isActivityEnabled: true,
+      isFaceRecognitionEnabled: true,
       order: AssetOrder.Desc,
       assets: [
         {

@@ -48,7 +48,7 @@ jobs:
 
       - name: Rebase feature on latest upstream
         run: |
-          git checkout feat/album-scope-faceRecognition-toggle
+          git checkout -B feat/album-scope-faceRecognition-toggle --track origin/feat/album-scope-faceRecognition-toggle
           git rebase upstream/main || (git rebase --abort && exit 1)
           git branch -B autobranch
 

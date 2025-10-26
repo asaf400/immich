@@ -17,7 +17,7 @@ jobs:
       contents: write
 
     steps:
-      - name: Checkout this repo (patch + workflow)
+      - name: Checkout this repo
         uses: actions/checkout@v5
 
       - name: Get latest upstream release
@@ -41,21 +41,20 @@ jobs:
         if: steps.check_existing.outputs.exists == 'true'
         run: echo "No new release to patch." && exit 0
 
-      - name: Download release tarball
+      - name: Add upstream
         run: |
-          curl -L https://github.com/${{ env.UPSTREAM_REPO }}/archive/${{ steps.get_release.outputs.release }}.tar.gz -o source.tar.gz
-          tar -xzf source.tar.gz
-          mv immich-* source
+          git remote add upstream https://github.com/immich-app/immich.git
+          git fetch upstream
 
-      - name: Apply patch
+      - name: Rebase feature on latest upstream
         run: |
-          cd source
-          git init
-          git config user.name "github-actions[bot]"
-          git apply ../${{ env.PATCH_FILE }} || (echo "❌ Patch failed!" && exit 1)
-          git add .
-          git commit -m "Apply patch to ${{ steps.get_release.outputs.release }}"
-          git tag "${{ steps.get_release.outputs.release }}-patched"
+          git checkout feat/album-scope-faceRecognition-toggle
+          git rebase upstream/main || (git rebase --abort && exit 1)
+          git branch -B autobranch
+
+      - name: Push updated branch
+        run: |
+          git push origin autobranch --force
 
       - name: Create tarball for release
         run: |

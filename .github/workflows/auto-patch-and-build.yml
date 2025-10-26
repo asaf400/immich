@@ -19,6 +19,8 @@ jobs:
     steps:
       - name: Checkout this repo
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - name: Get latest upstream release
         id: get_release

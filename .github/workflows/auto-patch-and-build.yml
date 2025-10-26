@@ -1,0 +1,74 @@
+name: Auto patch Immich and build Docker image
+
+on:
+  schedule:
+    - cron: "0 2 * * *"   # daily
+  workflow_dispatch:
+
+env:
+  UPSTREAM_REPO: immich-app/immich
+  PATCH_FILE: patch/faceRecognition-toggle.patch
+  IMAGE_NAME: ghcr.io/asaf400/immich:openvino-with-toggle
+
+jobs:
+  patch_and_release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout this repo (patch + workflow)
+        uses: actions/checkout@v5
+
+      - name: Get latest upstream release
+        id: get_release
+        uses: pozetroninc/github-action-get-latest-release@master
+        with:
+          repository: ${{ env.UPSTREAM_REPO }}\
+
+      - name: Check if this version already exists in this repo
+        id: check_existing
+        run: |
+          LATEST_TAG=${{ steps.get_release.outputs.release }}
+          if git ls-remote --tags origin | grep -q "$LATEST_TAG-patched"; then
+            echo "Already patched: $LATEST_TAG"
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Stop if version already released
+        if: steps.check_existing.outputs.exists == 'true'
+        run: echo "No new release to patch." && exit 0
+
+      - name: Download release tarball
+        run: |
+          curl -L https://github.com/${{ env.UPSTREAM_REPO }}/archive/${{ steps.get_release.outputs.release }}.tar.gz -o source.tar.gz
+          tar -xzf source.tar.gz
+          mv immich-* source
+
+      - name: Apply patch
+        run: |
+          cd source
+          git init
+          git config user.name "github-actions[bot]"
+          git apply ../${{ env.PATCH_FILE }} || (echo "❌ Patch failed!" && exit 1)
+          git add .
+          git commit -m "Apply patch to ${{ steps.get_release.outputs.release }}"
+          git tag "${{ steps.get_release.outputs.release }}-patched"
+
+      - name: Create tarball for release
+        run: |
+          cd source
+          tar -czf ../immich-${{ steps.get_release.outputs.release }}-patched.tar.gz .
+
+      - name: Publish new release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.get_release.outputs.release }}-patched
+          name: Immich Patched ${{ steps.get_release.outputs.release }}
+          body: |
+            This release includes the upstream Immich **${{ steps.get_release.outputs.release }}**
+            plus the custom patch for **Album Scope Face Recognition Toggle**.
+          files: |
+            immich-${{ steps.get_release.outputs.release }}-patched.tar.gz

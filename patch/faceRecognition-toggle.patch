@@ -1,0 +1,484 @@
+From b6052121fe3ff63726c84cb9773f7da0340913bc Mon Sep 17 00:00:00 2001
+From: Asaf Levy <asaf400@gmail.com>
+Date: Sat, 18 Oct 2025 02:16:58 +0300
+Subject: [PATCH] Working build - Album Face Recognition toggle - - Removes
+ persons and faces from assets upon add to album - - Queues face detection
+ once last disabled album is detached from asset
+
+---
+ i18n/en.json                                  |   2 +
+ .../openapi/lib/model/album_response_dto.dart | Bin 10025 -> 10460 bytes
+ .../openapi/lib/model/update_album_dto.dart   | Bin 6295 -> 7196 bytes
+ open-api/immich-openapi-specs.json            |   7 +++
+ open-api/typescript-sdk/src/fetch-client.ts   |   2 +
+ server/src/dtos/album.dto.ts                  |   6 +++
+ server/src/repositories/album.repository.ts   |  15 ++++++
+ server/src/repositories/person.repository.ts  |   7 +++
+ ...50393781-AddAlbumFaceRecognitionEnabled.ts |   9 ++++
+ server/src/schema/tables/album.table.ts       |   3 ++
+ server/src/services/album.service.ts          |  45 +++++++++++++++++-
+ server/src/services/person.service.ts         |  14 ++++++
+ server/test/fixtures/album.stub.ts            |   7 +++
+ server/test/fixtures/shared-link.stub.ts      |   2 +
+ web/package.json                              |   2 +-
+ web/src/lib/modals/AlbumOptionsModal.svelte   |  24 ++++++++++
+ web/src/test-data/factories/album-factory.ts  |   1 +
+ 17 files changed, 144 insertions(+), 2 deletions(-)
+ create mode 100644 server/src/schema/migrations/1760650393781-AddAlbumFaceRecognitionEnabled.ts
+
+diff --git a/i18n/en.json b/i18n/en.json
+index d265c9b9d..fc6544f58 100644
+--- a/i18n/en.json
++++ b/i18n/en.json
+@@ -77,6 +77,8 @@
+     "external_library_management": "External Library Management",
+     "face_detection": "Face detection",
+     "face_detection_description": "Detect the faces in assets using machine learning. For videos, only the thumbnail is considered. \"Refresh\" (re-)processes all assets. \"Reset\" additionally clears all current face data. \"Missing\" queues assets that haven't been processed yet. Detected faces will be queued for Facial Recognition after Face Detection is complete, grouping them into existing or new people.",
++    "album_face_recognition": "Face recognition",
++    "album_face_recognition_description": "Enable face detection and recognition for photos uploaded to this album",
+     "facial_recognition_job_description": "Group detected faces into people. This step runs after Face Detection is complete. \"Reset\" (re-)clusters all faces. \"Missing\" queues faces that don't have a person assigned.",
+     "failed_job_command": "Command {command} failed for job: {job}",
+     "force_delete_user_warning": "WARNING: This will immediately remove the user and all assets. This cannot be undone and the files cannot be recovered.",
+diff --git a/mobile/openapi/lib/model/album_response_dto.dart b/mobile/openapi/lib/model/album_response_dto.dart
+index 2f53706e7ad024bfe1a6bb987b36530fc8c7d19f..63f26f2c64cd25a3594b75fdddecf66597a1da01 100644
+GIT binary patch
+delta 326
+zcmZ4KcPDVeS0?$Q)WXutqSO?Hl8nq^z06{_#N^bV)a3m1yv&l!{JhOCm`a(&lJfI&
+z6fori*&^9>F@#<75|eULQxt4%v1pmf`-MpmL(Ap@fmux27{XAKY*jF1HZuyVv)Cvo
+tWEJP<MHi`K$U}9i$12$3@|d)E3p=JuCP&L@@S}%8w_E}T7NvL8d;vOodV~M~
+
+delta 46
+zcmV+}0MY;4QK?R_^#ZdY184)Ys|HO6vpNpn0<%LAfdaGm6CMP!Ul?}>voat|2$P;D
+EKB;yPqyPW_
+
+diff --git a/mobile/openapi/lib/model/update_album_dto.dart b/mobile/openapi/lib/model/update_album_dto.dart
+index 8353dba14e6271e80133f0720faf632639f20aa5..ff8215e1cda57c6c7333ef408088b5a90026f4b0 100644
+GIT binary patch
+delta 385
+zcmbPkILBhcOGd%WVz<QP)S%Sl{PeuclFa<P&DR;@*(dL1=io<|ILp3*Nf$%CYhGef
+zPHKvRt*ruv+~x$X0!BLwVI(bir8zkY_6i0HR+zdW$|gH-i%h=2eNP*gF}5lgGMkt3
+zTxP=b+T{CuN)~9og1SXLR>4-GBqOs}55q91iphO^a^g57Cu{S`Z?52%Va8%-ppXVe
+KNHz+Iu>k<$wT{04
+
+delta 41
+zcmV+^0M`GUIF~W7=>fA00!;_A*$O`avsw&W0h0#~-m@7G$^x^Z5*!1w85RQuHS!HL
+
+diff --git a/open-api/immich-openapi-specs.json b/open-api/immich-openapi-specs.json
+index fdfc40eb6..dd3dadb5f 100644
+--- a/open-api/immich-openapi-specs.json
++++ b/open-api/immich-openapi-specs.json
+@@ -10122,6 +10122,9 @@
+           "isActivityEnabled": {
+             "type": "boolean"
+           },
++          "isFaceRecognitionEnabled": {
++            "type": "boolean"
++          },
+           "lastModifiedAssetTimestamp": {
+             "format": "date-time",
+             "type": "string"
+@@ -10162,6 +10165,7 @@
+           "hasSharedLink",
+           "id",
+           "isActivityEnabled",
++          "isFaceRecognitionEnabled",
+           "owner",
+           "ownerId",
+           "shared",
+@@ -17307,6 +17311,9 @@
+           "isActivityEnabled": {
+             "type": "boolean"
+           },
++          "isFaceRecognitionEnabled": {
++            "type": "boolean"
++          },
+           "order": {
+             "allOf": [
+               {
+diff --git a/open-api/typescript-sdk/src/fetch-client.ts b/open-api/typescript-sdk/src/fetch-client.ts
+index 5c952c30a..95a6c1c74 100644
+--- a/open-api/typescript-sdk/src/fetch-client.ts
++++ b/open-api/typescript-sdk/src/fetch-client.ts
+@@ -374,6 +374,7 @@ export type AlbumResponseDto = {
+     hasSharedLink: boolean;
+     id: string;
+     isActivityEnabled: boolean;
++    isFaceRecognitionEnabled: boolean;
+     lastModifiedAssetTimestamp?: string;
+     order?: AssetOrder;
+     owner: UserResponseDto;
+@@ -410,6 +411,7 @@ export type UpdateAlbumDto = {
+     albumThumbnailAssetId?: string;
+     description?: string;
+     isActivityEnabled?: boolean;
++    isFaceRecognitionEnabled?: boolean;
+     order?: AssetOrder;
+ };
+ export type BulkIdsDto = {
+diff --git a/server/src/dtos/album.dto.ts b/server/src/dtos/album.dto.ts
+index 2f3f22099..840f64f79 100644
+--- a/server/src/dtos/album.dto.ts
++++ b/server/src/dtos/album.dto.ts
+@@ -84,6 +84,9 @@ export class UpdateAlbumDto {
+   @ValidateBoolean({ optional: true })
+   isActivityEnabled?: boolean;
+ 
++  @ValidateBoolean({ optional: true })
++  isFaceRecognitionEnabled?: boolean;
++
+   @ValidateEnum({ enum: AssetOrder, name: 'AssetOrder', optional: true })
+   order?: AssetOrder;
+ }
+@@ -155,6 +158,7 @@ export class AlbumResponseDto {
+   startDate?: Date;
+   endDate?: Date;
+   isActivityEnabled!: boolean;
++  isFaceRecognitionEnabled!: boolean;
+   @ValidateEnum({ enum: AssetOrder, name: 'AssetOrder', optional: true })
+   order?: AssetOrder;
+ 
+@@ -177,6 +181,7 @@ export type MapAlbumDto = {
+   ownerId: string;
+   owner: User;
+   isActivityEnabled: boolean;
++  isFaceRecognitionEnabled: boolean;
+   order: AssetOrder;
+ };
+ 
+@@ -224,6 +229,7 @@ export const mapAlbum = (entity: MapAlbumDto, withAssets: boolean, auth?: AuthDt
+     assets: (withAssets ? assets : []).map((asset) => mapAsset(asset, { auth })),
+     assetCount: entity.assets?.length || 0,
+     isActivityEnabled: entity.isActivityEnabled,
++    isFaceRecognitionEnabled: entity.isFaceRecognitionEnabled,
+     order: entity.order,
+   };
+ };
+diff --git a/server/src/repositories/album.repository.ts b/server/src/repositories/album.repository.ts
+index 00c1dfda7..58b1db6b3 100644
+--- a/server/src/repositories/album.repository.ts
++++ b/server/src/repositories/album.repository.ts
+@@ -397,4 +397,19 @@ export class AlbumRepository {
+       .orderBy('assetCount', 'desc')
+       .execute();
+   }
++
++  /**
++   * Get albums that contain the given asset and have face recognition disabled.
++   */
++  @GenerateSql({ params: [DummyValue.UUID] })
++  getAlbumsWithFaceRecognitionDisabled(assetId: string) {
++    return this.db
++      .selectFrom('album')
++      .innerJoin('album_asset', 'album.id', 'album_asset.albumsId')
++      .where('album_asset.assetsId', '=', assetId)
++      .where('album.isFaceRecognitionEnabled', '=', false)
++      .where('album.deletedAt', 'is', sql.lit(null))
++      .select('album.id')
++      .execute();
++  }
+ }
+diff --git a/server/src/repositories/person.repository.ts b/server/src/repositories/person.repository.ts
+index 725304938..3c3160134 100644
+--- a/server/src/repositories/person.repository.ts
++++ b/server/src/repositories/person.repository.ts
+@@ -112,6 +112,13 @@ export class PersonRepository {
+     await this.db.deleteFrom('asset_face').where('asset_face.sourceType', '=', sourceType).execute();
+   }
+ 
++  async deleteFacesByAssetIds(assetIds: string[]): Promise<void> {
++    if (assetIds.length === 0) {
++      return;
++    }
++    await this.db.deleteFrom('asset_face').where('asset_face.assetId', 'in', assetIds).execute();
++  }
++
+   getAllFaces(options: GetAllFacesOptions = {}) {
+     return this.db
+       .selectFrom('asset_face')
+diff --git a/server/src/schema/migrations/1760650393781-AddAlbumFaceRecognitionEnabled.ts b/server/src/schema/migrations/1760650393781-AddAlbumFaceRecognitionEnabled.ts
+new file mode 100644
+index 000000000..c6297f739
+--- /dev/null
++++ b/server/src/schema/migrations/1760650393781-AddAlbumFaceRecognitionEnabled.ts
+@@ -0,0 +1,9 @@
++import { Kysely, sql } from 'kysely';
++
++export async function up(db: Kysely<any>): Promise<void> {
++  await sql`ALTER TABLE "album" ADD "isFaceRecognitionEnabled" boolean NOT NULL DEFAULT true;`.execute(db);
++}
++
++export async function down(db: Kysely<any>): Promise<void> {
++  await sql`ALTER TABLE "album" DROP COLUMN "isFaceRecognitionEnabled";`.execute(db);
++}
+diff --git a/server/src/schema/tables/album.table.ts b/server/src/schema/tables/album.table.ts
+index 5628db3d0..c99a1189c 100644
+--- a/server/src/schema/tables/album.table.ts
++++ b/server/src/schema/tables/album.table.ts
+@@ -57,6 +57,9 @@ export class AlbumTable {
+   @Column({ type: 'boolean', default: true })
+   isActivityEnabled!: Generated<boolean>;
+ 
++  @Column({ type: 'boolean', default: true })
++  isFaceRecognitionEnabled!: Generated<boolean>;
++
+   @Column({ default: AssetOrder.Desc })
+   order!: Generated<AssetOrder>;
+ 
+diff --git a/server/src/services/album.service.ts b/server/src/services/album.service.ts
+index dd12e3189..be2145ce2 100644
+--- a/server/src/services/album.service.ts
++++ b/server/src/services/album.service.ts
+@@ -17,7 +17,7 @@ import {
+ } from 'src/dtos/album.dto';
+ import { BulkIdErrorReason, BulkIdResponseDto, BulkIdsDto } from 'src/dtos/asset-ids.response.dto';
+ import { AuthDto } from 'src/dtos/auth.dto';
+-import { Permission } from 'src/enum';
++import { JobName, Permission } from 'src/enum';
+ import { AlbumAssetCount, AlbumInfoOptions } from 'src/repositories/album.repository';
+ import { BaseService } from 'src/services/base.service';
+ import { addAssets, removeAssets } from 'src/utils/asset.util';
+@@ -152,6 +152,7 @@ export class AlbumService extends BaseService {
+       description: dto.description,
+       albumThumbnailAssetId: dto.albumThumbnailAssetId,
+       isActivityEnabled: dto.isActivityEnabled,
++      isFaceRecognitionEnabled: dto.isFaceRecognitionEnabled,
+       order: dto.order,
+     });
+ 
+@@ -181,6 +182,15 @@ export class AlbumService extends BaseService {
+         albumThumbnailAssetId: album.albumThumbnailAssetId ?? firstNewAssetId,
+       });
+ 
++      // If face recognition is disabled for this album, clean up face data for newly added assets
++      if (!album.isFaceRecognitionEnabled) {
++        const successfulAssetIds = results.filter(({ success }) => success).map(({ id }) => id);
++        await this.personRepository.deleteFacesByAssetIds(successfulAssetIds);
++        this.logger.log(
++          `Cleaned up face data for ${successfulAssetIds.length} assets added to album ${id} with face recognition disabled`,
++        );
++      }
++
+       const allUsersExceptUs = [...album.albumUsers.map(({ user }) => user.id), album.owner.id].filter(
+         (userId) => userId !== auth.user.id,
+       );
+@@ -235,6 +245,15 @@ export class AlbumService extends BaseService {
+         updatedAt: new Date(),
+         albumThumbnailAssetId: album.albumThumbnailAssetId ?? notPresentAssetIds[0],
+       });
++
++      // If face recognition is disabled for this album, clean up face data for newly added assets
++      if (!album.isFaceRecognitionEnabled) {
++        await this.personRepository.deleteFacesByAssetIds(notPresentAssetIds);
++        this.logger.log(
++          `Cleaned up face data for ${notPresentAssetIds.length} assets added to album ${albumId} with face recognition disabled`,
++        );
++      }
++
+       const allUsersExceptUs = [...album.albumUsers.map(({ user }) => user.id), album.owner.id].filter(
+         (userId) => userId !== auth.user.id,
+       );
+@@ -266,6 +285,30 @@ export class AlbumService extends BaseService {
+       await this.albumRepository.updateThumbnails();
+     }
+ 
++    // If face recognition is disabled for this album, check if any removed assets
++    // are no longer in any albums with face recognition disabled
++    if (!album.isFaceRecognitionEnabled && removedIds.length > 0) {
++      const assetsToRescan: string[] = [];
++
++      for (const assetId of removedIds) {
++        const albumsWithFaceRecognitionDisabled =
++          await this.albumRepository.getAlbumsWithFaceRecognitionDisabled(assetId);
++        if (!albumsWithFaceRecognitionDisabled || albumsWithFaceRecognitionDisabled.length === 0) {
++          assetsToRescan.push(assetId);
++        }
++      }
++
++      if (assetsToRescan.length > 0) {
++        const jobs = assetsToRescan.map(
++          (assetId) => ({ name: JobName.AssetDetectFaces, data: { id: assetId } }) as const,
++        );
++        await this.jobRepository.queueAll(jobs);
++        this.logger.log(
++          `Queued face detection for ${assetsToRescan.length} assets that were removed from the last album with face recognition disabled`,
++        );
++      }
++    }
++
+     return results;
+   }
+ 
+diff --git a/server/src/services/person.service.ts b/server/src/services/person.service.ts
+index 6fa9b3fdd..b3bd0a378 100644
+--- a/server/src/services/person.service.ts
++++ b/server/src/services/person.service.ts
+@@ -315,6 +315,20 @@ export class PersonService extends BaseService {
+       return JobStatus.Skipped;
+     }
+ 
++    // Check if asset belongs to any albums with face recognition disabled
++    const albumsWithFaceRecognitionDisabled = await this.albumRepository.getAlbumsWithFaceRecognitionDisabled(id);
++    if (albumsWithFaceRecognitionDisabled) {
++      if (albumsWithFaceRecognitionDisabled.length > 0) {
++        this.logger.log(
++          `Asset ${id} belongs to ${albumsWithFaceRecognitionDisabled.length} albums with face recognition disabled`,
++        );
++        this.logger.log(
++          `Skipping face detection for asset ${id} - belongs to these albums with face recognition disabled: ${albumsWithFaceRecognitionDisabled.map((album) => album.id).join(', ')}`,
++        );
++        return JobStatus.Skipped;
++      }
++    }
++
+     const { imageHeight, imageWidth, faces } = await this.machineLearningRepository.detectFaces(
+       previewFile.path,
+       machineLearning.facialRecognition,
+diff --git a/server/test/fixtures/album.stub.ts b/server/test/fixtures/album.stub.ts
+index d36989bbc..5d8728c5a 100644
+--- a/server/test/fixtures/album.stub.ts
++++ b/server/test/fixtures/album.stub.ts
+@@ -19,6 +19,7 @@ export const albumStub = {
+     sharedLinks: [],
+     albumUsers: [],
+     isActivityEnabled: true,
++    isFaceRecognitionEnabled: true,
+     order: AssetOrder.Desc,
+     updateId: '42',
+   }),
+@@ -42,6 +43,7 @@ export const albumStub = {
+       },
+     ],
+     isActivityEnabled: true,
++    isFaceRecognitionEnabled: true,
+     order: AssetOrder.Desc,
+     updateId: '42',
+   }),
+@@ -69,6 +71,7 @@ export const albumStub = {
+       },
+     ],
+     isActivityEnabled: true,
++    isFaceRecognitionEnabled: true,
+     order: AssetOrder.Desc,
+     updateId: '42',
+   }),
+@@ -92,6 +95,7 @@ export const albumStub = {
+       },
+     ],
+     isActivityEnabled: true,
++    isFaceRecognitionEnabled: true,
+     order: AssetOrder.Desc,
+     updateId: '42',
+   }),
+@@ -110,6 +114,7 @@ export const albumStub = {
+     sharedLinks: [],
+     albumUsers: [],
+     isActivityEnabled: true,
++    isFaceRecognitionEnabled: true,
+     order: AssetOrder.Desc,
+     updateId: '42',
+   }),
+@@ -128,6 +133,7 @@ export const albumStub = {
+     sharedLinks: [],
+     albumUsers: [],
+     isActivityEnabled: true,
++    isFaceRecognitionEnabled: true,
+     order: AssetOrder.Desc,
+     updateId: '42',
+   }),
+@@ -146,6 +152,7 @@ export const albumStub = {
+     sharedLinks: [],
+     albumUsers: [],
+     isActivityEnabled: true,
++    isFaceRecognitionEnabled: true,
+     order: AssetOrder.Desc,
+     updateId: '42',
+   }),
+diff --git a/server/test/fixtures/shared-link.stub.ts b/server/test/fixtures/shared-link.stub.ts
+index 19a62ad19..40e2931ad 100644
+--- a/server/test/fixtures/shared-link.stub.ts
++++ b/server/test/fixtures/shared-link.stub.ts
+@@ -100,6 +100,7 @@ const albumResponse: AlbumResponseDto = {
+   assets: [],
+   assetCount: 1,
+   isActivityEnabled: true,
++  isFaceRecognitionEnabled: true,
+   order: AssetOrder.Desc,
+ };
+ 
+@@ -187,6 +188,7 @@ export const sharedLinkStub = {
+       albumUsers: [],
+       sharedLinks: [],
+       isActivityEnabled: true,
++      isFaceRecognitionEnabled: true,
+       order: AssetOrder.Desc,
+       assets: [
+         {
+diff --git a/web/package.json b/web/package.json
+index 5eacb72b8..3e57fda2b 100644
+--- a/web/package.json
++++ b/web/package.json
+@@ -12,7 +12,7 @@
+     "check:svelte": "svelte-check --no-tsconfig --fail-on-warnings",
+     "check:typescript": "tsc --noEmit",
+     "check:watch": "npm run check:svelte -- --watch",
+-    "check:code": "npm run format && npm run lint:p && npm run check:svelte && npm run check:typescript",
++    "check:code": "npm run format && npm run lint && npm run check:svelte && npm run check:typescript",
+     "check:all": "npm run check:code && npm run test:cov",
+     "lint": "eslint . --max-warnings 0 --concurrency 4",
+     "lint:fix": "npm run lint -- --fix",
+diff --git a/web/src/lib/modals/AlbumOptionsModal.svelte b/web/src/lib/modals/AlbumOptionsModal.svelte
+index c7ede6391..57587660b 100644
+--- a/web/src/lib/modals/AlbumOptionsModal.svelte
++++ b/web/src/lib/modals/AlbumOptionsModal.svelte
+@@ -77,6 +77,24 @@
+     }
+   };
+ 
++  const handleToggleFaceRecognition = async () => {
++    try {
++      album = await updateAlbumInfo({
++        id: album.id,
++        updateAlbumDto: {
++          isFaceRecognitionEnabled: !album.isFaceRecognitionEnabled,
++        },
++      });
++
++      notificationController.show({
++        type: NotificationType.Info,
++        message: $t('settings_saved'),
++      });
++    } catch (error) {
++      handleError(error, $t('errors.unable_to_save_album'));
++    }
++  };
++
+   const handleRemoveUser = async (user: UserResponseDto): Promise<void> => {
+     const confirmed = await modalManager.showDialog({
+       title: $t('album_remove_user'),
+@@ -134,6 +152,12 @@
+             checked={album.isActivityEnabled}
+             onToggle={handleToggleActivity}
+           />
++          <SettingSwitch
++            title={$t('admin.album_face_recognition')}
++            subtitle={$t('admin.album_face_recognition_description')}
++            checked={album.isFaceRecognitionEnabled}
++            onToggle={handleToggleFaceRecognition}
++          />
+         </div>
+       </div>
+       <div class="py-2">
+diff --git a/web/src/test-data/factories/album-factory.ts b/web/src/test-data/factories/album-factory.ts
+index 7ea3715f7..3c44f4efa 100644
+--- a/web/src/test-data/factories/album-factory.ts
++++ b/web/src/test-data/factories/album-factory.ts
+@@ -18,5 +18,6 @@ export const albumFactory = Sync.makeFactory<AlbumResponseDto>({
+   albumUsers: [],
+   hasSharedLink: false,
+   isActivityEnabled: true,
++  isFaceRecognitionEnabled: true,
+   order: AssetOrder.Desc,
+ });
+-- 
+2.51.0
+

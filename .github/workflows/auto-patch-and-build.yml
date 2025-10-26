@@ -60,6 +60,8 @@ jobs:
       - name: Push updated branch
         run: |
           git push origin autobranch --force
+        env: 
+          GITHUB_TOKEN: ${{ secrets.PAT }}
 
       - name: Create tarball for release
         run: |

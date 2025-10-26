@@ -2,7 +2,7 @@ name: Auto patch Immich and build Docker image
 
 on:
   schedule:
-    - cron: "0 2 * * *"   # daily
+    - cron: "0 2 * * *" # daily
   workflow_dispatch:
 
 env:
@@ -24,7 +24,7 @@ jobs:
         id: get_release
         uses: pozetroninc/github-action-get-latest-release@master
         with:
-          repository: ${{ env.UPSTREAM_REPO }}\
+          repository: ${{ env.UPSTREAM_REPO }}
 
       - name: Check if this version already exists in this repo
         id: check_existing

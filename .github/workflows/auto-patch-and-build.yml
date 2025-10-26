@@ -54,7 +54,7 @@ jobs:
           git config --global user.email "action@github.com"
           git config --global user.name "Github Actions"
           git rebase upstream/main || (git rebase --abort && exit 1)
-          git branch -B autobranch
+          git checkout -B autobranch
 
       - name: Push updated branch
         run: |

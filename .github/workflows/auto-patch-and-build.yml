@@ -76,3 +76,4 @@ jobs:
           body: |
             This release includes the upstream Immich **${{ steps.get_release.outputs.release }}**
             plus the custom patch for **Album Scope Face Recognition Toggle**.
+          target_commitish: autobranch

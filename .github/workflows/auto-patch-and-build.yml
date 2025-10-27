@@ -66,7 +66,7 @@ jobs:
 
       - name: Create tarball for release
         run: |
-          tar -czf ./immich-${{ steps.get_release.outputs.release }}-patched.tar.gz --exclude=immich-${{ steps.get_release.outputs.release }}-patched.tar.gz .
+          tar -czf /tmp/immich-${{ steps.get_release.outputs.release }}-patched.tar.gz .
 
       - name: Publish new release
         uses: softprops/action-gh-release@v2
@@ -77,4 +77,4 @@ jobs:
             This release includes the upstream Immich **${{ steps.get_release.outputs.release }}**
             plus the custom patch for **Album Scope Face Recognition Toggle**.
           files: |
-            immich-${{ steps.get_release.outputs.release }}-patched.tar.gz
+            /tmp/immich-${{ steps.get_release.outputs.release }}-patched.tar.gz

@@ -38,7 +38,7 @@ jobs:
       - name: Stop if version already released
         if: steps.check_existing.outputs.exists == 'true'
         run: echo "No new release to patch." && exit 1
-        
+
       - name: Checkout this repo
         uses: actions/checkout@v5
         with:
@@ -66,7 +66,7 @@ jobs:
 
       # - name: Create tarball for release
       #   run: |
-      #     tar -czf /tmp/immich-${{ steps.get_release.outputs.release }}-patched.tar.gz --exclude=.git .
+      #     tar -czf /tmp/immich-${{ steps.get_release.outputs.release }}-patched.tar.gz -I "gzip --best" --exclude=.git .
 
       - name: Publish new release
         uses: softprops/action-gh-release@v2

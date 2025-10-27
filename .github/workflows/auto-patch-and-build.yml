@@ -66,7 +66,7 @@ jobs:
 
       - name: Create tarball for release
         run: |
-          tar -czf /tmp/immich-${{ steps.get_release.outputs.release }}-patched.tar.gz -I "gzip --best" --exclude=.git .
+          tar -cf /tmp/immich-${{ steps.get_release.outputs.release }}-patched.tar.gz -I "gzip --best" --exclude=.git .
 
       - name: Publish new release
         uses: softprops/action-gh-release@v2

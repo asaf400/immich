@@ -73,7 +73,7 @@ jobs:
         with:
           tag_name: ${{ steps.get_release.outputs.release }}-patched
           name: Immich Patched ${{ steps.get_release.outputs.release }}
+          target_commitish: autobranch
           body: |
             This release includes the upstream Immich **${{ steps.get_release.outputs.release }}**
             plus the custom patch for **Album Scope Face Recognition Toggle**.
-          target_commitish: autobranch

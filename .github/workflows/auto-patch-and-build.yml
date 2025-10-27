@@ -64,24 +64,27 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.PAT }}
 
-      # - name: Create tarball for release
-      #   run: |
-      #     tar -czf /tmp/immich-${{ steps.get_release.outputs.release }}-patched.tar.gz -I "gzip --best" --exclude=.git .
-
-      # - name: Publish new release
-      #   uses: softprops/action-gh-release@v2
-      #   with:
-      #     tag_name: ${{ steps.get_release.outputs.release }}-patched
-      #     name: Immich Patched ${{ steps.get_release.outputs.release }}
-      #     target_commitish: autobranch
-      #     body: |
+      - name: Create tarball for release
+        run: |
+          tar -czf /tmp/immich-${{ steps.get_release.outputs.release }}-patched.tar.gz -I "gzip --best" --exclude=.git .
 
       - name: Publish new release
-        uses: ncipollo/release-action@v1
+        uses: softprops/action-gh-release@v2
         with:
-          commit: autobranch
+          tag_name: ${{ steps.get_release.outputs.release }}-patched
           name: Immich Patched ${{ steps.get_release.outputs.release }}
-          tag: ${{ steps.get_release.outputs.release }}-patched
+          target_commitish: autobranch
+          files: /tmp/immich-${{ steps.get_release.outputs.release }}-patched.tar.gz
           body: |
             This release includes the upstream Immich **${{ steps.get_release.outputs.release }}**
             plus the custom patch for **Album Scope Face Recognition Toggle**.
+
+      # - name: Publish new release
+      #   uses: ncipollo/release-action@v1
+      #   with:
+      #     commit: autobranch
+      #     name: Immich Patched ${{ steps.get_release.outputs.release }}
+      #     tag: ${{ steps.get_release.outputs.release }}-patched
+      #     body: |
+      #       This release includes the upstream Immich **${{ steps.get_release.outputs.release }}**
+      #       plus the custom patch for **Album Scope Face Recognition Toggle**.

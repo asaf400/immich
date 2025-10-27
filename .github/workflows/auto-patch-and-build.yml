@@ -68,12 +68,20 @@ jobs:
       #   run: |
       #     tar -czf /tmp/immich-${{ steps.get_release.outputs.release }}-patched.tar.gz -I "gzip --best" --exclude=.git .
 
+      # - name: Publish new release
+      #   uses: softprops/action-gh-release@v2
+      #   with:
+      #     tag_name: ${{ steps.get_release.outputs.release }}-patched
+      #     name: Immich Patched ${{ steps.get_release.outputs.release }}
+      #     target_commitish: autobranch
+      #     body: |
+
       - name: Publish new release
-        uses: softprops/action-gh-release@v2
+        uses: ncipollo/release-action@v1
         with:
-          tag_name: ${{ steps.get_release.outputs.release }}-patched
+          commit: autobranch
           name: Immich Patched ${{ steps.get_release.outputs.release }}
-          target_commitish: autobranch
-          body: |
+          tag: ${{ steps.get_release.outputs.release }}-patched
+          bodyFile: |
             This release includes the upstream Immich **${{ steps.get_release.outputs.release }}**
             plus the custom patch for **Album Scope Face Recognition Toggle**.

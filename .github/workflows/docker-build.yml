@@ -9,7 +9,8 @@ name: Build and Push Patched Docker Image
 # This is the key event that connects it to your auto-update workflow.
 on:
   release:
-    types: [published]
+    types: [released]
+  workflow_dispatch:
 
 # 2. PERMISSIONS:
 #    - packages: write is required to push the built image to GitHub Container Registry (GHCR).
@@ -40,7 +41,6 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-
       # 5. PREPARE: Define some variables for clarity
       # We'll get the repo name (e.g., "my-immich-fork") and lowercase it for the Docker image name.
       - name: Prepare image name and tags
@@ -54,23 +54,22 @@ jobs:
 
           echo "Building image: ghcr.io/${{ github.repository_owner }}/$REPO_NAME:$RELEASE_TAG"
 
-
       # 6. FIND ASSET: Get the URL for the custom .tar.gz asset from the release
       - name: Find release asset
         id: find_asset
         run: |
           # Get the JSON metadata for all release assets
           ASSET_JSON='${{ toJSON(github.event.release.assets) }}'
-          
+
           # Use jq to find the first asset ending in .tar.gz and get its URL
           # If your asset has a different name, change the '.name | endswith(".tar.gz")' filter
           ASSET_URL=$(echo "$ASSET_JSON" | jq -r '.[] | select(.name | endswith(".tar.gz")) | .browser_download_url' | head -n 1)
-          
+
           if [ -z "$ASSET_URL" ]; then
             echo "Error: Could not find a .tar.gz asset in the release."
             exit 1
           fi
-          
+
           echo "Found asset URL: $ASSET_URL"
           echo "ASSET_URL=$ASSET_URL" >> $GITHUB_OUTPUT
 
@@ -79,7 +78,7 @@ jobs:
         id: patch
         run: |
           DOCKERFILE_URL="https://raw.githubusercontent.com/imagegenius/docker-immich/main/Dockerfile"
-          
+
           # Download the original Dockerfile
           curl -sL -o Dockerfile.original "$DOCKERFILE_URL"
 

@@ -23,11 +23,6 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
     steps:
-      # This step isn't strictly necessary since we don't use local files,
-      # but it's good practice to have the repo context.
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
       # 3. SETUP: Log in to GitHub Container Registry (GHCR)
       - name: Log in to GHCR
         uses: docker/login-action@v3
@@ -73,20 +68,21 @@ jobs:
           echo "Found asset URL: $ASSET_URL"
           echo "ASSET_URL=$ASSET_URL" >> $GITHUB_OUTPUT
 
+      - name: Checkout tools repo
+        uses: actions/checkout@v5
+        with:
+          repository: imagegenius/docker-immich
+          path: docker-immich
+
       # 6. PATCH: Download and patch the third-party Dockerfile
       - name: Download and Patch Dockerfile
         id: patch
         run: |
-          DOCKERFILE_URL="https://raw.githubusercontent.com/imagegenius/docker-immich/main/Dockerfile"
-
-          # Download the original Dockerfile
-          curl -sL -o Dockerfile.original "$DOCKERFILE_URL"
-
-          sed -e 's@https://github.com/immich-app/immich/archive/${IMMICH_VERSION}.tar.gz@${{ steps.find_asset.outputs.ASSET_URL }}@g' Dockerfile.original > Dockerfile.patched
+          sed -e 's@https://github.com/immich-app/immich/archive/${IMMICH_VERSION}.tar.gz@${{ steps.find_asset.outputs.ASSET_URL }}@g' docker-immich/Dockerfile > docker-immich/Dockerfile.patched
 
           echo "Dockerfile patched successfully."
           echo "Patched Dockerfile:"
-          cat Dockerfile.patched
+          cat docker-immich/Dockerfile.patched
 
       # 7. BUILD & PUSH:
       # This step builds the image using the patched Dockerfile and pushes it to GHCR.
@@ -94,9 +90,9 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           # Context is the current directory ('.')
-          context: .
+          context: ./docker-immich
           # We explicitly tell it to use our patched file
-          file: ./Dockerfile.patched
+          file: ./docker-immich/Dockerfile.patched
           # This tells the action to push the image after building
           push: true
           # We tag the image with both the release tag and 'latest'
